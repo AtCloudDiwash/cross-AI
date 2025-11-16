@@ -1,18 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "LLM Custom Context Injector",
+  "name": "List All Tabs",
   "version": "1.0",
-  "description": "Inject your personal context into ChatGPT or other LLM queries.",
-  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "permissions": ["tabs"],
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "LLM Context"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ]
+    "default_popup": "popup.html"
+  }
 }

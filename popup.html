@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html>
-<head>
-<link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-<h2>LLM Context</h2>
-<textarea id="context" placeholder="Enter your persistent context here..."></textarea>
-<button id="save">Save Context</button>
-<p id="status"></p>
-<script src="popup.js"></script>
-</body>
+  <head>
+    <style>
+      table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        padding: 5px;
+      }
+      ul { font-size: 14px; max-height: 300px; overflow-y: auto; }
+    </style>
+  </head>
+  <body>
+    <div id="content"></div>
+    <script src="popup.js"></script>
+  </body>
 </html>
