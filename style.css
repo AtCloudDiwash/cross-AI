@@ -1,4 +1,119 @@
-body { font-family: Arial; width: 250px; padding: 10px; }
-textarea { width: 100%; height: 120px; margin-bottom: 10px; }
-button { width: 100%; padding: 8px; cursor: pointer; }
-#status { color: green; margin-top: 10px; }
+body {
+  margin: 0;
+  padding: 12px;
+  font-family: sans-serif;
+  background: #f8f9ff;
+  width: 350px;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.card {
+  background: white;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  margin-bottom: 12px;
+  border-left: 4px solid #5c6cff;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.url {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.extract {
+  background: #5c6cff;
+  color: white;
+}
+
+.extract:hover {
+  background: #4b58dd;
+}
+
+.inject {
+  background: #e8e8e8;
+}
+
+.inject:hover {
+  background: #d6d6d6;
+}
+
+/* Other tabs table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 8px;
+  font-size: 12px;
+}
+
+th {
+  background: #eceeff;
+  font-weight: 600;
+}
+
+tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+
+.extract-btn {
+  background: #5c6cff;
+  color: white;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-right: 5px;
+  cursor: pointer;
+}
+
+.extract-btn:hover {
+  background: #4b58dd;
+}
+
+.inject-btn {
+  background: #e8e8e8;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.inject-btn:hover {
+  background: #d6d6d6;
+}

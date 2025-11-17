@@ -1,9 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "List All Tabs",
+  "name": "CrossAI",
   "version": "1.0",
-  "permissions": ["tabs"],
+
+  "permissions": ["tabs", "storage", "scripting"],
+
   "action": {
     "default_popup": "popup.html"
-  }
+  },
+
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://www.chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://www.claude.ai/*",
+        "https://perplexity.ai/*",
+        "https://www.perplexity.ai/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
 }
