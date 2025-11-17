@@ -8,11 +8,21 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 
 load_dotenv()
 
 app = FastAPI()
+
+# Allow all origins (for local testing)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def create_prompt(raw_html):
     prompt = f"""
@@ -45,22 +55,26 @@ def create_prompt(raw_html):
     return prompt
 
 
-class get_my_scrape(BaseModel):
-    raw_conversation:str
+class ScrapeRequest(BaseModel):
+    raw_conversation: str
 
 @app.post("/scrape_gen")
-def get_my_scrape(raw_conversation:str):
-
+def get_my_scrape(request: ScrapeRequest):  # Change this line
     try:
         genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
-        model = genai.GenerativeModel(model_name='gemini-2.5-flash',  generation_config={ "temperature": 0.7})
-        response = model.generate_content(create_prompt(raw_conversation))
+        model = genai.GenerativeModel(
+            model_name='gemini-2.5-flash',  
+            generation_config={"temperature": 0.7}
+        )
+        response = model.generate_content(create_prompt(request.raw_conversation))  # And this line
         return JSONResponse(
             status_code=200,
             content={"message": response.text}
         )
     except Exception as e:
+        print(f"Error: {e}")  # Add logging
+        print(e)
         return JSONResponse(
             status_code=500,
-            content={"message": "Internal Server Error"}
+            content={"message": "Internal server error. We are having issues from our side"}  # Return actual error
         )

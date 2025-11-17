@@ -75,6 +75,7 @@ def create_prompt_summarize(filtered_text, word_count):
         - If the text is long, create a multi-section summary.
         - If the content has a clear topic (product, news, article, event), highlight the main message.
         - Follow the minimum word count rule. It should be less than {word_count}.
+        - Include the link of the website, saying if you can visit this link for more info
 
         ### INPUT CONTENT
         {filtered_text}
@@ -134,8 +135,9 @@ def get_my_scrape(url:str, taste = "default"):
         return JSONResponse(status_code=200, content={"message": summarized.text})
     
     except Exception as e:
+        print(e)
         return JSONResponse(
             status_code=500,
-            content={"message": "Internal Server Error"}
+            content={"message": e}
         )
 

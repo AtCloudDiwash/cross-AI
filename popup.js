@@ -80,7 +80,6 @@ chrome.tabs.query({}, (tabs) => {
     btn.textContent = isAI ? "Inject" : "Add";
     btn.dataset.tabId = tab.id;
 
-  
     if (isAI) {
       // Inject buttons: enable only if active
       btn.disabled = true; // default disabled
@@ -90,7 +89,7 @@ chrome.tabs.query({}, (tabs) => {
           btn.disabled = false; // enable only if this tab is active
         }
       });
-    } 
+    }
 
     item.appendChild(left);
     item.appendChild(btn);
@@ -100,26 +99,7 @@ chrome.tabs.query({}, (tabs) => {
   });
 });
 
-// Extract animation handler
-
-function showExtractAnimation(){
-  extractBtn.disabled = true;
-  loaderText.style.display = "block";
-  loaderText.textContent = "Extracting...";
-
-  setTimeout(() => {
-    loaderText.textContent = "Done!";
-    extractBtn.disabled = false;
-
-    setTimeout(() => (loaderText.style.display = "none"), 900);
-  }, 1200);
-}
-
-// ---- EXTRACT BUTTON ----
-extractBtn.addEventListener("click", () => {
-showExtractAnimation()
-});
-
+// Disabling
 
 // By default, disable extract button
 extractBtn.disabled = true;
@@ -136,9 +116,141 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     hostname = activeTab.url;
   }
 
-  const isAI = AI_SITES.some(site =>
-    site.domains.some(domain => hostname.includes(domain))
+  const isAI = AI_SITES.some((site) =>
+    site.domains.some((domain) => hostname.includes(domain))
   );
 
   extractBtn.disabled = !isAI;
+});
+
+// Extract state handler
+function showLoadingState() {
+  extractBtn.disabled = true;
+  loaderText.style.display = "block";
+  loaderText.textContent = "Extracting...";
+  loaderText.className = "loader-text loading";
+}
+
+function showSuccessState() {
+  loaderText.textContent = "✓ Done!";
+  loaderText.className = "loader-text success";
+
+  setTimeout(() => {
+    loaderText.style.display = "none";
+    extractBtn.disabled = false;
+  }, 2000);
+}
+
+function showErrorState(errorMessage) {
+  loaderText.textContent = "✗ " + errorMessage;
+  loaderText.className = "loader-text error";
+
+  setTimeout(() => {
+    loaderText.style.display = "none";
+    extractBtn.disabled = false;
+  }, 4000);
+}
+
+// ---- EXTRACT BUTTON ----
+extractBtn.addEventListener("click", () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const activeTab = tabs[0];
+    if (!activeTab || !activeTab.id) {
+      showErrorState("No active tab found!");
+      return;
+    }
+
+    const hostname = new URL(activeTab.url).hostname;
+
+    // Show loading state
+    showLoadingState();
+
+    // Inject content script if not already present
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: activeTab.id },
+        files: ["content.js"],
+      });
+      console.log("Content script injected");
+    } catch (err) {
+      console.log("Script already loaded or error:", err);
+    }
+
+    // Wait for script to be ready
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    chrome.tabs.sendMessage(
+      activeTab.id,
+      { action: "extractConversation", hostname },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error(chrome.runtime.lastError.message);
+          showErrorState("Content script not loaded!");
+          return;
+        }
+
+        if (response && response.success) {
+          showSuccessState();
+        } else {
+          showErrorState(response?.message || "Extraction failed");
+        }
+      }
+    );
+  });
+});
+
+
+// ---- INJECT CONTEXT BUTTONS  ----
+document.addEventListener("click", async (e) => {
+  if (!e.target.classList.contains("item-btn")) return;
+
+  const tabId = Number(e.target.dataset.tabId);
+  const isInject = e.target.textContent === "Inject";
+
+  if (!isInject) return;
+
+  console.log("Inject clicked for tab:", tabId);
+
+  try {
+    // 1. Ensure content script is injected
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content.js"],
+    });
+  } catch (err) {
+    console.warn("Content script injection warning:", err.message);
+  }
+
+  // 2. Give script time to initialize
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  // 3. Get tab info to extract hostname
+  chrome.tabs.get(tabId, (tab) => {
+    const hostname = new URL(tab.url).hostname;
+    
+    // 4. Send message with hostname
+    chrome.tabs.sendMessage(
+      tabId,
+      { action: "injectContext", hostname: hostname },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error(
+            "InjectContext failed:",
+            chrome.runtime.lastError.message
+          );
+          return;
+        }
+
+        if (!response || !response.success) {
+          console.error(
+            "InjectContext error:",
+            response?.message || "No proper response"
+          );
+          return;
+        }
+
+        console.log("InjectContext success");
+      }
+    );
+  });
 });
