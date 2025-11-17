@@ -1,12 +1,37 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <h2>Active GenAI Tabs</h2>
-    <div id="content"></div>
+<head>
+  <meta charset="UTF-8" />
+  <title>crossAI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
 
-    <script src="popup.js"></script>
-  </body>
+  <div class="header">
+    <img src="icons/header_logo.svg" class="top-logo" alt="crossAI logo" />
+    <button id="closeBtn" class="close-btn" aria-label="crossAI popup">
+      <u>Close</u>
+    </button>
+  </div>
+
+  <div class="section extract-section">
+    <h2 class="extract-label">Active tab (Switch to the tab and click on extract)</h2>
+
+    <button id="extractBtn" class="extract-btn" disabled>Extract</button>
+
+    <p id="loaderText" class="loader-text" style="display:none;">Extracting...</p>
+  </div>
+
+  <div class="section">
+    <h2>AI chatbots</h2>
+    <div id="aiList" class="list"></div>
+  </div>
+
+  <div class="section">
+    <h2>Other sites</h2>
+    <div id="otherList" class="list"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
 </html>

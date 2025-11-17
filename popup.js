@@ -1,98 +1,144 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const content = document.getElementById("content");
+const extractBtn = document.getElementById("extractBtn");
+const loaderText = document.getElementById("loaderText");
+const aiList = document.getElementById("aiList");
+const otherList = document.getElementById("otherList");
+const closeBtn = document.getElementById("closeBtn");
 
-  chrome.tabs.query({}, (tabs) => {
-    const genaiSites = ["chatgpt.com", "gemini.google.com", "claude.ai"];
-    const genaiTabs = [];
-    const otherTabs = [];
+// Updated AI detection rules:
+const AI_SITES = [
+  {
+    domains: ["chatgpt.com", "chat.openai.com"],
+    logo: "icons/chatgpt.svg",
+  },
+  {
+    domains: ["claude.ai"],
+    logo: "icons/claude.svg",
+  },
+  {
+    domains: ["gemini.google.com", "ai.google.com"],
+    logo: "icons/gemini.svg",
+  },
+];
 
-    tabs.forEach((tab) => {
-      if (!tab.url || !tab.url.startsWith("http")) return;
+closeBtn.addEventListener("click", () => {
+  window.close();
+});
 
-      const url = tab.url;
+// ---- LOAD TABS ----
+chrome.tabs.query({}, (tabs) => {
+  tabs.forEach((tab) => {
+    if (
+      !tab.url ||
+      tab.url.startsWith("chrome:") ||
+      tab.url.startsWith("extension:")
+    )
+      return;
 
-      if (genaiSites.some((site) => url.includes(site))) {
-        genaiTabs.push(tab);
-      } else {
-        otherTabs.push(tab);
+    let hostname;
+    try {
+      hostname = new URL(tab.url).hostname;
+    } catch {
+      hostname = tab.url;
+    }
+
+    let matchedAISite = null;
+
+    for (const site of AI_SITES) {
+      if (site.domains.some((domain) => hostname.includes(domain))) {
+        matchedAISite = site;
+        break;
       }
-    });
-
-    // ========== GENAI LIST ==========
-    if (genaiTabs.length > 0) {
-      const table = document.createElement("table");
-      const header = table.insertRow();
-      header.insertCell().textContent = "GenAI";
-      header.insertCell().textContent = "URL";
-      header.insertCell().textContent = "Actions";
-
-      genaiTabs.forEach((tab) => {
-        const row = table.insertRow();
-
-        row.insertCell().textContent = tab.title;
-        row.insertCell().textContent = tab.url;
-
-        const actionCell = row.insertCell();
-
-        const extractBtn = document.createElement("button");
-        extractBtn.textContent = "Extract";
-        extractBtn.className = "extract-btn";
-        extractBtn.addEventListener("click", () => {
-          sendSiteAction(tab, "extract");
-        });
-
-        const injectBtn = document.createElement("button");
-        injectBtn.textContent = "Inject";
-        injectBtn.className = "inject-btn";
-
-        injectBtn.addEventListener("click", () => {
-          chrome.storage.sync.get(["llmContext"], (data) => {
-            sendSiteAction(tab, "inject", data.llmContext || "");
-          });
-        });
-        actionCell.appendChild(extractBtn);
-        actionCell.appendChild(injectBtn);
-      });
-
-      content.appendChild(table);
     }
 
-    // ========== OTHER TABS ==========
-    if (otherTabs.length > 0) {
-      const h3 = document.createElement("h3");
-      h3.textContent = "Other";
-      content.appendChild(h3);
+    const isAI = Boolean(matchedAISite);
 
-      const ul = document.createElement("ul");
-      otherTabs.forEach((tab) => {
-        const li = document.createElement("li");
-        li.textContent = `${tab.title} — ${tab.url}`;
-        ul.appendChild(li);
-      });
-      content.appendChild(ul);
+    const item = document.createElement("div");
+    item.className = "item";
+
+    const left = document.createElement("div");
+    left.className = "item-left";
+
+    const logo = document.createElement("img");
+    logo.className = "item-logo";
+    if (isAI) {
+      logo.src = matchedAISite.logo;
+    } else if (tab.favIconUrl) {
+      logo.src = tab.favIconUrl;
+    } else {
+      logo.src = "icons/website.svg";
     }
+
+    const title = document.createElement("span");
+    title.className = "item-title";
+    title.textContent = tab.title || tab.url || "Untitled";
+
+    left.appendChild(logo);
+    left.appendChild(title);
+
+    const btn = document.createElement("button");
+    btn.className = "item-btn";
+    btn.textContent = isAI ? "Inject" : "Add";
+    btn.dataset.tabId = tab.id;
+
+  
+    if (isAI) {
+      // Inject buttons: enable only if active
+      btn.disabled = true; // default disabled
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs[0];
+        if (activeTab && activeTab.id === tab.id) {
+          btn.disabled = false; // enable only if this tab is active
+        }
+      });
+    } 
+
+    item.appendChild(left);
+    item.appendChild(btn);
+
+    if (isAI) aiList.appendChild(item);
+    else otherList.appendChild(item);
   });
 });
 
-// =========================================================
-// SEND MESSAGE TO CONTENT SCRIPT BY SITE TYPE
-// =========================================================
+// Extract animation handler
 
-function sendSiteAction(tab, action) {
-  let site = "";
+function showExtractAnimation(){
+  extractBtn.disabled = true;
+  loaderText.style.display = "block";
+  loaderText.textContent = "Extracting...";
 
-  if (tab.url.includes("chatgpt.com")) site = "chatgpt";
-  else if (tab.url.includes("claude.ai")) site = "claude";
-  else if (tab.url.includes("gemini.google.com")) site = "gemini";
+  setTimeout(() => {
+    loaderText.textContent = "Done!";
+    extractBtn.disabled = false;
 
-  const message = { action, site };
-
-  chrome.tabs.sendMessage(tab.id, message, () => {
-    if (chrome.runtime.lastError) {
-      console.warn(
-        "Content script not available:",
-        chrome.runtime.lastError.message
-      );
-    }
-  });
+    setTimeout(() => (loaderText.style.display = "none"), 900);
+  }, 1200);
 }
+
+// ---- EXTRACT BUTTON ----
+extractBtn.addEventListener("click", () => {
+showExtractAnimation()
+});
+
+
+// By default, disable extract button
+extractBtn.disabled = true;
+
+// Check active tab and enable only for AI sites
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  const activeTab = tabs[0];
+  if (!activeTab || !activeTab.url) return;
+
+  let hostname;
+  try {
+    hostname = new URL(activeTab.url).hostname;
+  } catch {
+    hostname = activeTab.url;
+  }
+
+  const isAI = AI_SITES.some(site =>
+    site.domains.some(domain => hostname.includes(domain))
+  );
+
+  extractBtn.disabled = !isAI;
+});
