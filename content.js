@@ -3,7 +3,7 @@
 // =============================================================
 chrome.runtime.onMessage.addListener((msg) => {
   try {
-    const conversation = localStorage.getItem("conversation") || "";
+    const conversation = localStorage.getItem("conversation") || "yes this is me";
 
     switch (msg.action) {
       case "extract":

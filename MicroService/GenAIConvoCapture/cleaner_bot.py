@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
+from fastapi.responses import JSONResponse
 
 
 load_dotenv()
@@ -54,6 +55,12 @@ def get_my_scrape(raw_conversation:str):
         genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
         model = genai.GenerativeModel(model_name='gemini-2.5-flash',  generation_config={ "temperature": 0.7})
         response = model.generate_content(create_prompt(raw_conversation))
-        return response.text
+        return JSONResponse(
+            status_code=200,
+            content={"message": response.text}
+        )
     except Exception as e:
-        return {"error": "Something went wrong on our end. Please try again in a few moments."}
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal Server Error"}
+        )

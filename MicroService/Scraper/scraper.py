@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
+from fastapi.responses import JSONResponse
 
 
 load_dotenv()
@@ -129,9 +130,12 @@ def get_my_scrape(url:str, taste = "default"):
         summarized = model.generate_content(create_prompt_summarize(response.text, taste))
         
         if(taste == "default"):
-            return response.text
-        return summarized.text
+            return JSONResponse(status_code=200, content={"message": response.text})
+        return JSONResponse(status_code=200, content={"message": summarized.text})
     
     except Exception as e:
-        return {"error": "We encountered a setup issue. Please try again later. or try different website"}
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal Server Error"}
+        )
 
