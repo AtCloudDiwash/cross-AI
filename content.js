@@ -90,12 +90,11 @@ function getEditor(site) {
       return document.querySelector(
         'div[contenteditable="true"][data-testid="chat-input"]'
       );
-    if (site === "perplexity") {
-      return (
-        document.querySelector("#ask-input p span") ||
-        document.querySelector("#ask-input p")
-      );
-    }
+ if (site === "gemini") {
+   return document.querySelector(
+     "div.ql-editor.textarea.new-input-ui[contenteditable='true'] p"
+   );
+ }
   } catch (err) {
     console.warn("Failed to get editor for site:", site, err);
   }
@@ -112,7 +111,6 @@ function injectContext(site, contextText) {
 
     const userInput = getInputText(site, editor);
     const injectedMessage = `Here is some persistent user context you should always consider: ${contextText}\n\n${userInput}`;
-
     setInputText(site, editor, injectedMessage);
     placeCursorAtEnd(editor);
   } catch (err) {
@@ -133,38 +131,11 @@ function getInputText(site, editor) {
 }
 
 // =============================================================
-//  CHECK IF LEXICAL EDITOR IS EMPTY
-// =============================================================
-function isLexicalEmpty(editor) {
-  try {
-    if (!editor) return true;
-    const t = editor.innerText;
-    return !t || t.trim().length === 0 || /^\n+$/.test(t);
-  } catch (err) {
-    console.warn("Failed to check if lexical is empty:", err);
-    return true;
-  }
-}
-
-// =============================================================
 //  SET TEXT BACK INTO EDITOR
 // =============================================================
 function setInputText(site, editor, text) {
   try {
-    if (site === "chatgpt" || site === "claude") {
       editor.innerText = text;
-      return;
-    }
-
-    if (site === "perplexity") {
-      if (isLexicalEmpty(editor)) {
-        editor.innerHTML = `<span data-lexical-text="true">${escapeHTML(
-          text
-        )}</span>`;
-      } else {
-        editor.innerText = text;
-      }
-    }
   } catch (err) {
     console.error("Failed to set text in editor:", err);
   }

@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const content = document.getElementById("content");
 
   chrome.tabs.query({}, (tabs) => {
-    const genaiSites = ["chatgpt.com", "perplexity.ai", "claude.ai"];
+    const genaiSites = ["chatgpt.com", "gemini.google.com", "claude.ai"];
     const genaiTabs = [];
     const otherTabs = [];
 
@@ -83,7 +83,7 @@ function sendSiteAction(tab, action) {
 
   if (tab.url.includes("chatgpt.com")) site = "chatgpt";
   else if (tab.url.includes("claude.ai")) site = "claude";
-  else if (tab.url.includes("perplexity.ai")) site = "perplexity";
+  else if (tab.url.includes("gemini.google.com")) site = "gemini";
 
   const message = { action, site };
 

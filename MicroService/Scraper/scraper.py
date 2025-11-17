@@ -11,9 +11,6 @@ from typing import Optional
 
 load_dotenv()
 
-genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
-model = genai.GenerativeModel(model_name='gemini-2.5-flash',  generation_config={ "temperature": 0.7})
-
 app = FastAPI()
 
 def create_prompt(raw_html):
@@ -123,11 +120,18 @@ class get_my_scrape(BaseModel):
 @app.post("/scrape")
 def get_my_scrape(url:str, taste = "default"):
 
-    soup, raw_html = scrape_url(url)
-    response = model.generate_content(create_prompt(raw_html))
-    summarized = model.generate_content(create_prompt_summarize(response.text, taste))
+    try:   
+        genai.configure(api_key=os.environ['GOOGLE_API_KEY'])
+        model = genai.GenerativeModel(model_name='gemini-2.5-flash',  generation_config={ "temperature": 0.7})
+
+        soup, raw_html = scrape_url(url)
+        response = model.generate_content(create_prompt(raw_html))
+        summarized = model.generate_content(create_prompt_summarize(response.text, taste))
+        
+        if(taste == "default"):
+            return response.text
+        return summarized.text
     
-    if(taste == "default"):
-        return response.text
-    return summarized.text
+    except Exception as e:
+        return {"error": "We encountered a setup issue. Please try again later. or try different website"}
 

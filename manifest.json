@@ -16,8 +16,8 @@
         "https://www.chatgpt.com/*",
         "https://claude.ai/*",
         "https://www.claude.ai/*",
-        "https://perplexity.ai/*",
-        "https://www.perplexity.ai/*"
+        "https://gemini.google.com/*",
+        "https://www.gemini.google.com/*"
       ],
       "js": ["content.js"]
     }
