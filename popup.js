@@ -315,10 +315,11 @@ document.addEventListener("click", async (e) => {
 
             if (response && response.success) {
               console.log("Add context success!");
-              hideLoadingState()
+              hideLoadingState();
               hide
             } else {
               console.error("Add context error:", response?.message);
+              hideLoadingState();
             }
           }
         );

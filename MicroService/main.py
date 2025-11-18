@@ -45,20 +45,30 @@ class ScrapeRequest(BaseModel):
 # --------------------------------------------------------
 
 def prompt_conversation_summary(raw_html: str):
-    return f"""
-    You are an AI assistant tasked with summarizing a conversation history.
+    prompt = f"""
+                You are an AI assistant tasked with summarizing a conversation history.
 
-    Input: A series of messages between a user and an AI, formatted as plain text:
-    {raw_html}
+                Input: A series of messages between a user and an AI, formatted as plain text:
+                {raw_html}
 
-    Your goal:
-    - Provide a concise, structured summary.
-    - Only include factual content.
-    - Remove UI, system messages, or irrelevant text.
-    - Highlight intentions, topics, and needed context.
+                Your goal:
+                1. Produce a concise, clear, and structured summary of the conversation.
+                2. Only include factual content from the conversation — do NOT invent or assume anything.
+                3. Ignore any irrelevant text such as system messages, UI prompts, "Try Plus," "Your free trial ended," or follow-up suggestions. Focus only on the meaningful exchange between the user and AI.
+                4. Format the summary in a way that another AI can immediately understand the context and continue the conversation seamlessly.
+                5. Highlight key points, important questions, user intentions, and relevant facts.
+                6. Avoid unnecessary repetition or filler words.
+                7. Keep it as short and precise as possible while retaining all important context.
 
-    Output ONLY the summary.
-    """
+                Output format:
+                - Use bullet points or numbered lists if it improves clarity.
+                - Clearly distinguish user intentions, topics discussed, and AI responses.
+                - Do NOT include raw conversation text — only the distilled context.
+
+                Provide the summary only. No commentary, no extra explanations.
+            """
+    
+    return prompt;
 
 def prompt_text_extraction(raw_html: str):
     return f"""
