@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const rawConversation = extractConversation(siteType);
 
     // Make API request with proper error handling
-    fetch("http://localhost:8000/scrape_gen", {
+    fetch("http://localhost:8000/summarize-conversation", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -39,41 +39,36 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         if (response.status === 200) {
           // Success - store in chrome storage
-            console.log("💾 About to save:", data.message);
+          console.log("💾 About to save:", data.summary);
 
-            // Success - store in chrome storage
-            chrome.storage.local
-              .set({ latestContext: data.message })
-              .then(() => {
-                console.log("✅ Summary saved to storage");
+          // Success - store in chrome storage
+          chrome.storage.local.set({ latestContext: data.summary }).then(() => {
+            console.log("✅ Summary saved to storage");
 
-                // Verify it was saved
-                chrome.storage.local.get(["latestContext"], (result) => {
-                  console.log(
-                    "📦 Retrieved from storage:",
-                    result.latestContext
-                  );
-                });
+            // Verify it was saved
+            chrome.storage.local.get(["latestContext"], (result) => {
+              console.log("📦 Retrieved from storage:", result.latestContext);
+            });
 
-                sendResponse({
-                  success: true,
-                  message: data.message,
-                });
-              });
+            sendResponse({
+              success: true,
+              message: data.summary,
+            });
+          });
         } else if (response.status === 500) {
           // Server error
-          console.error("Server error:", data.message);
+          console.error("Server error:", data.summary);
           sendResponse({
             success: false,
-            message: data.message || "Internal server error",
+            message: data.summary || "Internal server error",
           });
         } else {
           // Other HTTP errors
-          console.error(`HTTP ${response.status}:`, data.message);
+          console.error(`HTTP ${response.status}:`, data.summary);
           sendResponse({
             success: false,
             message:
-              data.message || `Server returned status ${response.status}`,
+              data.summary || `Server returned status ${response.status}`,
           });
         }
       })
@@ -88,9 +83,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
 
     return true; // Keep channel open for async response
-  } else if(msg.action == "injectContext"){
-  try{
-
+  } else if (msg.action == "injectContext") {
+    try {
       chrome.storage.local.get(["latestContext"], (result) => {
         const conversationContext = result.latestContext;
 
@@ -103,14 +97,128 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         injectContext(getSiteType(msg.hostname), conversationContext);
         sendResponse({ success: true, message: "Context injected" });
       });
-    
-    return true; // Keep message channel open for async response
-  } catch(err){
-    console.log(err);
-    sendResponse({ success: false, message: err.message });
-    return true;
+
+      return true; // Keep message channel open for async response
+    } catch (err) {
+      console.log(err);
+      sendResponse({ success: false, message: err.message });
+      return true;
+    }
+  } else if (msg.action === "addContext") {
+    try {
+      const hostname = msg.hostname;
+      const siteType = getSiteType(hostname);
+      console.log(msg.url);
+      console.log(msg.sourceTabId);
+
+      if (!siteType) {
+        sendResponse({ success: false, message: "Unsupported site" });
+        return true;
+      }
+
+      const scrapeUrl = msg.url;
+      if (!scrapeUrl) {
+        sendResponse({
+          success: false,
+          message: "No URL provided from popup",
+        });
+        return true;
+      }
+
+      const summarize =
+        typeof msg.summarize === "boolean" ? msg.summarize : true;
+      const word_limit =
+        typeof msg.word_limit === "number" ? msg.word_limit : 400;
+
+      const bodyPayload = {
+        url: scrapeUrl,
+        summarize,
+        word_limit,
+      };
+
+      fetch("http://localhost:8000/scrape", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(bodyPayload),
+      })
+        .then(async (response) => {
+          let data;
+          try {
+            data = await response.json();
+          } catch (err) {
+            sendResponse({
+              success: false,
+              message: "Invalid JSON returned from server",
+            });
+            return;
+          }
+
+          if (response.ok) {
+            const serverText =
+              data.summary ||
+              data.extracted_text ||
+              data.scraped ||
+              data.output ||
+              data.result ||
+              "";
+
+            if (!serverText) {
+              sendResponse({
+                success: false,
+                message: "Scrape returned empty result",
+              });
+              return;
+            }
+
+            const editor = getEditor(siteType);
+            if (!editor) {
+              sendResponse({
+                success: false,
+                message: "Editor not found",
+              });
+              return;
+            }
+
+            const userInput = getInputText(siteType, editor);
+            const finalInjectedText = `Here is some persistent user context you should always consider:\n\n${serverText}\n\nUser's query:\n\n${userInput}`;
+
+            setInputText(siteType, editor, finalInjectedText);
+            placeCursorAtEnd(editor);
+
+            sendResponse({
+              success: true,
+              message: "Context added successfully",
+              injected: finalInjectedText,
+            });
+            return;
+          }
+
+          const errMessage =
+            data.message || data.detail || `HTTP ${response.status}`;
+          sendResponse({ success: false, message: errMessage });
+        })
+        .catch((err) => {
+          sendResponse({
+            success: false,
+            message:
+              "Cannot connect to FastAPI server at http://localhost:8000/scrape",
+          });
+        });
+
+      return true;
+    } catch (err) {
+      sendResponse({
+        success: false,
+        message: "Unexpected internal error",
+      });
+      return true;
+    }
   }
-}
+
+  return true;
+
 });
 
   // ==================== EXTRACT CONVERSATION ====================

@@ -124,11 +124,17 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 });
 
 // Extract state handler
-function showLoadingState() {
+function showLoadingState(stateName) {
   extractBtn.disabled = true;
   loaderText.style.display = "block";
-  loaderText.textContent = "Extracting...";
+  loaderText.textContent = stateName;
   loaderText.className = "loader-text loading";
+}
+
+function hideLoadingState(){
+    extractBtn.disabled = false;
+    loaderText.style.display = "block";
+    loaderText.textContent = "";
 }
 
 function showSuccessState() {
@@ -163,7 +169,7 @@ extractBtn.addEventListener("click", () => {
     const hostname = new URL(activeTab.url).hostname;
 
     // Show loading state
-    showLoadingState();
+    showLoadingState("Extracting....");
 
     // Inject content script if not already present
     try {
@@ -179,7 +185,7 @@ extractBtn.addEventListener("click", () => {
     // Wait for script to be ready
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    chrome.tabs.sendMessage(
+    await chrome.tabs.sendMessage(
       activeTab.id,
       { action: "extractConversation", hostname },
       (response) => {
@@ -200,57 +206,125 @@ extractBtn.addEventListener("click", () => {
 });
 
 
-// ---- INJECT CONTEXT BUTTONS  ----
+// ---- INJECT AND ADD BUTTONS ----
 document.addEventListener("click", async (e) => {
   if (!e.target.classList.contains("item-btn")) return;
 
   const tabId = Number(e.target.dataset.tabId);
-  const isInject = e.target.textContent === "Inject";
+  const buttonText = e.target.textContent;
 
-  if (!isInject) return;
+  // Handle INJECT button
+  if (buttonText === "Inject") {
+    console.log("Inject clicked for tab:", tabId);
 
-  console.log("Inject clicked for tab:", tabId);
+    try {
+      // 1. Ensure content script is injected
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ["content.js"],
+      });
+    } catch (err) {
+      console.warn("Content script injection warning:", err.message);
+    }
 
-  try {
-    // 1. Ensure content script is injected
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ["content.js"],
+    // 2. Give script time to initialize
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // 3. Get tab info to extract hostname
+    chrome.tabs.get(tabId, (tab) => {
+      const hostname = new URL(tab.url).hostname;
+
+      // 4. Send message with hostname
+      chrome.tabs.sendMessage(
+        tabId,
+        { action: "injectContext", hostname: hostname },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              "InjectContext failed:",
+              chrome.runtime.lastError.message
+            );
+            return;
+          }
+
+          if (!response || !response.success) {
+            console.error(
+              "InjectContext error:",
+              response?.message || "No proper response"
+            );
+            return;
+          }
+
+          console.log("InjectContext success");
+        }
+      );
     });
-  } catch (err) {
-    console.warn("Content script injection warning:", err.message);
   }
 
-  // 2. Give script time to initialize
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  // Handle ADD button
+  if (buttonText === "Add") {
+    console.log("Add clicked for tab:", tabId);
 
-  // 3. Get tab info to extract hostname
-  chrome.tabs.get(tabId, (tab) => {
-    const hostname = new URL(tab.url).hostname;
-    
-    // 4. Send message with hostname
-    chrome.tabs.sendMessage(
-      tabId,
-      { action: "injectContext", hostname: hostname },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.error(
-            "InjectContext failed:",
-            chrome.runtime.lastError.message
-          );
-          return;
+    showLoadingState("Adding...")
+    try {
+      // Get BOTH the clicked tab AND the active tab
+      const [activeTab] = await chrome.tabs.query({ 
+        active: true, 
+        currentWindow: true 
+      });
+      
+      const activeTabId = activeTab.id;
+
+      // Get the clicked tab's info
+      chrome.tabs.get(tabId, async (clickedTab) => {
+        const clickedUrl = clickedTab.url;
+
+        console.log("Clicked tab URL:", clickedUrl);
+        console.log("Active tab ID:", activeTabId);
+        console.log("Active tab URL:", activeTab.url);
+
+        // Inject content script into ACTIVE tab
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: activeTabId },
+            files: ["content.js"],
+          });
+        } catch (err) {
+          console.warn("Content script injection warning:", err.message);
         }
 
-        if (!response || !response.success) {
-          console.error(
-            "InjectContext error:",
-            response?.message || "No proper response"
-          );
-          return;
-        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
-        console.log("InjectContext success");
-      }
-    );
-  });
+        // Send to the ACTIVE tab (where you currently are)
+        chrome.tabs.sendMessage(
+          activeTabId, // Send to active tab (AI chatbot)
+          {
+            action: "addContext",
+            url: clickedUrl, // URL of the tab you clicked "Add" on
+            sourceTabId: tabId, // Optional: ID of the source tab
+            hostname: new URL(activeTab.url).hostname,
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Add context failed:",
+                chrome.runtime.lastError.message
+              );
+              return;
+            }
+
+            if (response && response.success) {
+              console.log("Add context success!");
+              hideLoadingState()
+              hide
+            } else {
+              console.error("Add context error:", response?.message);
+            }
+          }
+        );
+      });
+    } catch (err) {
+      console.error("Error handling Add button:", err);
+    }
+  }
 });
